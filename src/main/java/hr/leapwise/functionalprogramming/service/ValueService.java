@@ -3,6 +3,8 @@ package hr.leapwise.functionalprogramming.service;
 import com.cyan.commons.utility.validation.Defense;
 import hr.leapwise.functionalprogramming.domain.DbValue;
 import hr.leapwise.functionalprogramming.model.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import javax.persistence.EntityManager;
@@ -22,12 +24,19 @@ import java.util.stream.IntStream;
 @Service
 public class ValueService
 {
+    private static final Logger logger = LoggerFactory.getLogger(ValueService.class);
     private static final int BATCH_SIZE = 1000;
+    private int numberOfValuesToGenerate = 10000000; // Default value
 
     private EntityManager entityManager;
 
     public ValueService(EntityManager entityManager) {
         this.entityManager = entityManager;
+    }
+
+    public ValueService(EntityManager entityManager, int numberOfValuesToGenerate) {
+        this.entityManager = entityManager;
+        this.numberOfValuesToGenerate = numberOfValuesToGenerate;
     }
 
     private final List<Value> existingValues = new ArrayList<>();
@@ -40,11 +49,7 @@ public class ValueService
     public void start()
     {
         // create 10 000 000 input values
-        final List<Value> results = Collections.nCopies(10000000, Value.builder()
-                                                                       .name("www.hr")
-                                                                       .created(ZonedDateTime.now())
-                                                                       .createdBy("GH")
-                                                                       .build());
+        final List<Value> results = IntStream.range(0, this.numberOfValuesToGenerate).mapToObj(i -> Value.builder().name("www.hr").description("Description_" + i).created(ZonedDateTime.now()).createdBy("GH").build()).collect(Collectors.toList());
 
             results.parallelStream().forEach(this::process);
     }
@@ -55,10 +60,7 @@ public class ValueService
      */
     public void process(Value result)
     {
-        if(!existingValues.contains(result))
-        {
-            values.add(result); // tu se događa exception, zašto? - List u koju spremamo nije bila thread safe.
-        }
+        values.add(result);
     }
 
     /**
@@ -66,7 +68,7 @@ public class ValueService
      */
     public void save()
     {
-        System.out.println("Save start! --> " + ZonedDateTime.now());
+        logger.info("Save start! --> {}", ZonedDateTime.now());
         // koristeći lambde spremiti rezultate ne opterećujući procesor (koristiti chunkove podataka)
         if(values.size() > 0) {
             // create chunks of values
@@ -74,7 +76,7 @@ public class ValueService
                      .mapToObj(i -> values.subList(i* BATCH_SIZE, Math.min(values.size(), (i+1)* BATCH_SIZE)))
                      .forEach(this::saveBatch);
         }
-        System.out.println("Save end! --> " + ZonedDateTime.now());
+        logger.info("Save end! --> {}", ZonedDateTime.now());
     }
 
     /**
@@ -87,8 +89,7 @@ public class ValueService
         Defense.notEmpty(valuesBatch, "database entities");
 
 
-        valuesBatch.parallelStream()
-                .collect(Collectors.toList())
+        valuesBatch.stream()
                 .forEach(value -> {
 
                 //validate data
@@ -111,6 +112,6 @@ public class ValueService
             // HINT !!! after each batch insert, we have to release hibernate first level cache (to avoid in OutOfMemoryException)
             entityManager.clear();
 
-            System.out.println("Batch values inserted: "+BATCH_SIZE);
+            logger.info("Batch values processed: {}", valuesBatch.size());
     }
 }
