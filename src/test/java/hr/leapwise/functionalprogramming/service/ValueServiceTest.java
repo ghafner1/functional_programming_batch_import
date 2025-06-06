@@ -1,17 +1,18 @@
 package hr.leapwise.functionalprogramming.service;
 
 import hr.leapwise.functionalprogramming.FunctionalprogrammingApplication;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.MockitoAnnotations;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.transaction.annotation.Transactional;
 
-import javax.persistence.EntityManager;
+import jakarta.persistence.EntityManager;
 
-@RunWith (SpringRunner.class)
+import static org.junit.jupiter.api.Assertions.assertEquals; // For JUnit 5 assertions
+
+@ExtendWith(SpringExtension.class)
 @SpringBootTest(classes = FunctionalprogrammingApplication.class)
 public  class ValueServiceTest
 {
@@ -20,13 +21,19 @@ public  class ValueServiceTest
     private EntityManager entityManager;
 
     @Test
+    @Transactional
     public void testStart()
     {
 
-        ValueService valueService = new ValueService(entityManager);
+        int testDataVolume = 2500; // Using a smaller volume for testing
+        ValueService valueService = new ValueService(entityManager, testDataVolume);
 
         valueService.start();
-
         valueService.save();
+
+        // Add assertion
+        long count = (long) entityManager.createQuery("SELECT COUNT(v) FROM DbValue v").getSingleResult();
+        long expectedCount = 1000 + testDataVolume; // 1000 from ApplicationStartup
+        assertEquals(expectedCount, count);
     }
 }

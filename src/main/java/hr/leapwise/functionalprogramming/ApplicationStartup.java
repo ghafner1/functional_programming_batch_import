@@ -7,8 +7,8 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 @Component
 @Transactional
@@ -26,7 +26,8 @@ public class ApplicationStartup
     @Override
     public void onApplicationEvent(final ApplicationReadyEvent event) {
 
-        ValueService valueService = new ValueService(entityManager);
+        int startupDataVolume = 1000; // Reduced volume for startup during app init
+        ValueService valueService = new ValueService(entityManager, startupDataVolume);
 
         valueService.start();
 
